@@ -1,357 +1,192 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 栄養士コンシェルジュ</title>
-    
-    <!-- React & ReactDOM (CDN) -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    
-    <!-- Babel (ブラウザ上でJSXを変換するため) -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <!-- Tailwind CSS (CDN) -->
-    <script src="https://cdn.tailwindcss.com"></script>
+import React, { useState, useEffect } from 'react';
+import { PlusCircle, Apple, Coffee, Utensils, Moon, Trash2, Activity } from 'lucide-react';
 
-    <!-- Lucide Icons (React用ではないブラウザ用スクリプト) -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+export default function App() {
+  // 食事の記録を保存するステート
+  const [meals, setMeals] = useState(() => {
+    // 実際のアプリではここでlocalStorageやデータベースから読み込みます
+    return [
+      { id: 1, type: '朝食', description: 'トーストとコーヒー、ゆで卵', healthScore: 4, time: '07:30' },
+      { id: 2, type: '昼食', description: 'ラーメン、チャーハンセット', healthScore: 2, time: '12:30' }
+    ];
+  });
 
-    <style>
-        /* カスタムスタイルが必要な場合はここに記述 */
-        body { font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; }
-        .fade-in { animation: fadeIn 0.5s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    </style>
-</head>
-<body class="bg-orange-50 text-gray-800">
+  // 入力フォーム用のステート
+  const [mealType, setMealType] = useState('朝食');
+  const [description, setDescription] = useState('');
+  const [healthScore, setHealthScore] = useState(3);
 
-    <div id="root"></div>
+  // 平均健康スコアの計算
+  const averageScore = meals.length > 0 
+    ? (meals.reduce((sum, meal) => sum + meal.healthScore, 0) / meals.length).toFixed(1)
+    : 0;
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+  // 新しい食事を記録する処理
+  const handleAddMeal = (e) => {
+    e.preventDefault();
+    if (!description.trim()) return;
 
-        // アイコンコンポーネントの代わり（LucideのSVGを直接描画する簡易コンポーネント）
-        const Icon = ({ name, size = 24, className = "" }) => {
-            const iconRef = useRef(null);
-            useEffect(() => {
-                if (iconRef.current) {
-                    lucide.createIcons({
-                        icons: { [name]: lucide.icons[name] },
-                        nameAttr: 'data-lucide',
-                        attrs: { class: className, width: size, height: size }
-                    });
-                }
-            }, [name, size, className]);
-            return <i ref={iconRef} data-lucide={name}></i>;
-        };
+    const now = new Date();
+    const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
-        function App() {
-            const [meals, setMeals] = useState({
-                breakfast: '',
-                lunch: '',
-                dinner: ''
-            });
-            const [isAnalyzing, setIsAnalyzing] = useState(false);
-            const [result, setResult] = useState(null);
-            const [error, setError] = useState(null);
+    const newMeal = {
+      id: Date.now(),
+      type: mealType,
+      description,
+      healthScore,
+      time: timeString
+    };
 
-            const handleInputChange = (mealType, value) => {
-                setMeals(prev => ({ ...prev, [mealType]: value }));
-            };
+    setMeals([...meals, newMeal]);
+    setDescription('');
+    setHealthScore(3); // デフォルトに戻す
+  };
 
-            const fetchWithRetry = async (url, options, retries = 5) => {
-                const delays = [1000, 2000, 4000, 8000, 16000];
-                for (let i = 0; i < retries; i++) {
-                    try {
-                        const response = await fetch(url, options);
-                        if (!response.ok) throw new Error(`APIリクエストに失敗しました (ステータス: ${response.status})`);
-                        return await response.json();
-                    } catch (e) {
-                        if (i === retries - 1) throw e;
-                        await new Promise(res => setTimeout(res, delays[i]));
-                    }
-                }
-            };
+  // 記録を削除する処理
+  const handleDelete = (id) => {
+    setMeals(meals.filter(meal => meal.id !== id));
+  };
 
-            const analyzeDiet = async () => {
-                if (!meals.breakfast && !meals.lunch && !meals.dinner) {
-                    setError("少なくとも1食分の食事内容を入力してください。");
-                    return;
-                }
+  // 食事タイプに応じたアイコンを返す関数
+  const getIcon = (type) => {
+    switch(type) {
+      case '朝食': return <Coffee className="w-5 h-5 text-amber-500" />;
+      case '昼食': return <Utensils className="w-5 h-5 text-orange-500" />;
+      case '夕食': return <Moon className="w-5 h-5 text-indigo-500" />;
+      case '間食': return <Apple className="w-5 h-5 text-red-500" />;
+      default: return <Utensils className="w-5 h-5 text-gray-500" />;
+    }
+  };
 
-                setIsAnalyzing(true);
-                setError(null);
-                setResult(null);
+  return (
+    <div className="min-h-screen bg-gray-50 text-gray-800 font-sans p-4 md:p-8">
+      <div className="max-w-md mx-auto space-y-6">
+        
+        {/* ヘッダー */}
+        <header className="text-center pb-4 border-b border-gray-200">
+          <h1 className="text-2xl font-bold text-emerald-600 flex items-center justify-center gap-2">
+            <Apple className="w-6 h-6" />
+            BiteLog
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">毎日の食習慣を振り返ろう</p>
+        </header>
 
-                // 注意: GitHubに公開する際は、APIキーを直接コードに書くのはセキュリティ上推奨されません。
-                // 実際の運用ではバックエンドサーバーを経由させるなどの対策が必要です。
-                // ここではデモ用として空文字を設定し、実行環境から付与されることを想定したコード構成にしています。
-                const apiKey = ""; 
-                const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+        {/* ダッシュボード */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-medium text-gray-500 mb-1">今日の健康スコア</h2>
+            <div className="text-3xl font-bold text-gray-800">
+              {averageScore} <span className="text-lg font-normal text-gray-400">/ 5.0</span>
+            </div>
+          </div>
+          <div className={`p-4 rounded-full ${averageScore >= 4 ? 'bg-emerald-100 text-emerald-600' : averageScore >= 3 ? 'bg-yellow-100 text-yellow-600' : 'bg-red-100 text-red-600'}`}>
+            <Activity className="w-8 h-8" />
+          </div>
+        </div>
 
-                const prompt = `
-あなたはプロの栄養士です。以下のユーザーの1日の食事内容を分析し、不足している可能性が高い栄養素を最大3つ挙げてください。
-また、その栄養素が不足することで起こりうる身体の悩み（症状）と、補うためのおすすめの食材を提案してください。
+        {/* 入力フォーム */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <h3 className="font-semibold text-gray-800 mb-4">食事を記録する</h3>
+          <form onSubmit={handleAddMeal} className="space-y-4">
+            
+            <div className="grid grid-cols-4 gap-2">
+              {['朝食', '昼食', '夕食', '間食'].map(type => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setMealType(type)}
+                  className={`py-2 text-sm font-medium rounded-lg transition-colors ${
+                    mealType === type 
+                      ? 'bg-emerald-600 text-white shadow-md' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
 
-【ユーザーの食事内容】
-朝食: ${meals.breakfast || "なし"}
-昼食: ${meals.lunch || "なし"}
-夕食: ${meals.dinner || "なし"}
+            <div>
+              <input
+                type="text"
+                placeholder="何を食べましたか？（例：サラダとチキン）"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-shadow"
+                required
+              />
+            </div>
 
-必ず指定されたJSONスキーマに従って返答してください。`;
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-2">
+                健康度合いの自己評価（1: 悪い 〜 5: 良い）
+              </label>
+              <input
+                type="range"
+                min="1"
+                max="5"
+                value={healthScore}
+                onChange={(e) => setHealthScore(parseInt(e.target.value))}
+                className="w-full accent-emerald-500"
+              />
+              <div className="flex justify-between text-xs text-gray-400 mt-1 px-1">
+                <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+              </div>
+            </div>
 
-                const payload = {
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: {
-                        responseMimeType: "application/json",
-                        responseSchema: {
-                            type: "OBJECT",
-                            properties: {
-                                missingNutrients: {
-                                    type: "ARRAY",
-                                    items: {
-                                        type: "OBJECT",
-                                        properties: {
-                                            name: { type: "STRING" },
-                                            reason: { type: "STRING" },
-                                            symptoms: {
-                                                type: "ARRAY",
-                                                items: { type: "STRING" }
-                                            },
-                                            recommendedFoods: {
-                                                type: "ARRAY",
-                                                items: { type: "STRING" }
-                                            }
-                                        }
-                                    }
-                                },
-                                generalAdvice: { type: "STRING" }
-                            }
-                        }
-                    }
-                };
+            <button
+              type="submit"
+              className="w-full bg-gray-800 hover:bg-gray-900 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+            >
+              <PlusCircle className="w-5 h-5" />
+              記録する
+            </button>
+          </form>
+        </div>
 
-                try {
-                    const data = await fetchWithRetry(endpoint, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (responseText) {
-                        setResult(JSON.parse(responseText));
-                    } else {
-                        throw new Error("AIからの応答が不正です。");
-                    }
-                } catch (err) {
-                    setError("分析中にエラーが発生しました。インターネット接続を確認するか、しばらく経ってからもう一度お試しください。");
-                    console.error(err);
-                } finally {
-                    setIsAnalyzing(false);
-                }
-            };
-
-            return (
-                <div className="min-h-screen p-4 md:p-8">
-                    <div className="max-w-4xl mx-auto space-y-6">
-                        
-                        {/* ヘッダー */}
-                        <header className="bg-white rounded-2xl p-6 shadow-sm border border-orange-100 flex items-center space-x-4">
-                            <div className="bg-orange-100 p-3 rounded-full text-orange-600 flex items-center justify-center">
-                                <Icon name="utensils" size={32} />
-                            </div>
-                            <div>
-                                <h1 className="text-2xl md:text-3xl font-bold text-gray-900">AI 栄養士コンシェルジュ</h1>
-                                <p className="text-gray-500 mt-1 text-sm md:text-base">今日の食事を入力して、カラダのサインと不足しがちな栄養素をチェックしましょう。</p>
-                            </div>
-                        </header>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                            {/* 入力フォーム */}
-                            <div className="lg:col-span-5 space-y-4">
-                                <div className="bg-white rounded-2xl p-6 shadow-sm border border-orange-100 space-y-6">
-                                    <h2 className="text-lg font-semibold flex items-center border-b pb-2 text-gray-800">
-                                        <Icon name="info" size={20} className="mr-2 text-orange-500" />
-                                        今日の食事を教えてください
-                                    </h2>
-                                    
-                                    <div className="space-y-4">
-                                        <MealInput 
-                                            icon={<Icon name="sun" size={20} className="text-yellow-500" />}
-                                            label="朝食"
-                                            value={meals.breakfast}
-                                            onChange={(e) => handleInputChange('breakfast', e.target.value)}
-                                            placeholder="例：トーストとコーヒー、食べてない"
-                                        />
-                                        <MealInput 
-                                            icon={<Icon name="sun-medium" size={20} className="text-orange-500" />}
-                                            label="昼食"
-                                            value={meals.lunch}
-                                            onChange={(e) => handleInputChange('lunch', e.target.value)}
-                                            placeholder="例：コンビニのおにぎりとカップ麺"
-                                        />
-                                        <MealInput 
-                                            icon={<Icon name="moon" size={20} className="text-indigo-500" />}
-                                            label="夕食"
-                                            value={meals.dinner}
-                                            onChange={(e) => handleInputChange('dinner', e.target.value)}
-                                            placeholder="例：豚の生姜焼き定食、サラダ"
-                                        />
-                                    </div>
-
-                                    {error && (
-                                        <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-start">
-                                            <div className="mt-0.5 mr-2 flex-shrink-0">
-                                                <Icon name="alert-circle" size={16} />
-                                            </div>
-                                            <p>{error}</p>
-                                        </div>
-                                    )}
-
-                                    <button
-                                        onClick={analyzeDiet}
-                                        disabled={isAnalyzing}
-                                        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium py-3 px-4 rounded-xl transition-colors flex items-center justify-center disabled:bg-orange-300"
-                                    >
-                                        {isAnalyzing ? (
-                                            <>
-                                                <div className="animate-spin mr-2">
-                                                    <Icon name="loader-2" size={20} />
-                                                </div>
-                                                AIが分析中...
-                                            </>
-                                        ) : (
-                                            <>
-                                                栄養バランスを分析する
-                                                <div className="ml-2">
-                                                    <Icon name="arrow-right" size={20} />
-                                                </div>
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* 結果表示エリア */}
-                            <div className="lg:col-span-7">
-                                {isAnalyzing ? (
-                                    <div className="bg-white rounded-2xl p-12 shadow-sm border border-orange-100 flex flex-col items-center justify-center h-full min-h-[400px] text-gray-500 space-y-4">
-                                        <div className="animate-spin text-orange-400">
-                                            <Icon name="loader-2" size={48} />
-                                        </div>
-                                        <p className="text-lg">食事内容から栄養素を計算しています...</p>
-                                    </div>
-                                ) : result ? (
-                                    <div className="space-y-6 fade-in">
-                                        <div className="bg-white rounded-2xl p-6 shadow-sm border border-orange-100">
-                                            <h2 className="text-xl font-bold mb-4 flex items-center text-gray-900">
-                                                <div className="mr-2 text-green-500">
-                                                    <Icon name="activity" size={24} />
-                                                </div>
-                                                分析結果とアドバイス
-                                            </h2>
-                                            <p className="bg-green-50 text-green-800 p-4 rounded-xl text-sm leading-relaxed mb-6">
-                                                {result.generalAdvice}
-                                            </p>
-
-                                            <h3 className="font-semibold text-gray-700 mb-4 border-b pb-2">不足しがちな栄養素とカラダのサイン</h3>
-                                            <div className="space-y-4">
-                                                {result.missingNutrients.map((nutrient, index) => (
-                                                    <NutrientCard key={index} nutrient={nutrient} />
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="bg-white rounded-2xl p-12 shadow-sm border border-orange-100 flex flex-col items-center justify-center h-full min-h-[400px] text-gray-400 text-center">
-                                        <div className="mb-4 text-orange-200">
-                                            <Icon name="utensils" size={64} />
-                                        </div>
-                                        <p className="text-lg">食事を入力して「分析する」ボタンを押すと、<br />ここに結果が表示されます。</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+        {/* タイムライン（記録一覧） */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <h3 className="font-semibold text-gray-800 mb-4">今日の記録</h3>
+          
+          {meals.length === 0 ? (
+            <p className="text-center text-gray-400 py-6">まだ記録がありません</p>
+          ) : (
+            <div className="space-y-4">
+              {meals.slice().reverse().map(meal => (
+                <div key={meal.id} className="flex items-start gap-4 p-4 rounded-xl bg-gray-50 border border-gray-100 relative group">
+                  <div className="bg-white p-2 rounded-full shadow-sm">
+                    {getIcon(meal.type)}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-bold text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
+                        {meal.type}
+                      </span>
+                      <span className="text-xs text-gray-400">{meal.time}</span>
                     </div>
-                </div>
-            );
-        }
-
-        // 食事入力コンポーネント
-        function MealInput({ icon, label, value, onChange, placeholder }) {
-            return (
-                <div>
-                    <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-                        <span className="mr-2 flex items-center justify-center">{icon}</span>
-                        {label}
-                    </label>
-                    <textarea
-                        value={value}
-                        onChange={onChange}
-                        placeholder={placeholder}
-                        rows="2"
-                        className="w-full p-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all resize-none text-gray-800"
-                    ></textarea>
-                </div>
-            );
-        }
-
-        // 栄養素カードコンポーネント
-        function NutrientCard({ nutrient }) {
-            return (
-                <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
-                        <h4 className="text-lg font-bold text-orange-600 flex items-center">
-                            <div className="mr-1.5 text-orange-500 flex items-center">
-                                <Icon name="alert-circle" size={18} />
-                            </div>
-                            {nutrient.name}
-                        </h4>
-                        <span className="text-xs bg-white text-gray-500 px-3 py-1 rounded-full border">
-                            {nutrient.reason}
+                    <p className="text-gray-800 mb-2">{meal.description}</p>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <span key={star} className={`text-sm ${star <= meal.healthScore ? 'text-yellow-400' : 'text-gray-200'}`}>
+                          ★
                         </span>
+                      ))}
                     </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                        <div>
-                            <h5 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
-                                <div className="mr-1.5 text-red-400 flex items-center">
-                                    <Icon name="activity" size={16} />
-                                </div>
-                                起こりうる身体の悩み
-                            </h5>
-                            <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                                {nutrient.symptoms.map((symptom, idx) => (
-                                    <li key={idx}>{symptom}</li>
-                                ))}
-                            </ul>
-                        </div>
-                        
-                        <div>
-                            <h5 className="text-sm font-semibold text-gray-600 mb-2 flex items-center">
-                                <div className="mr-1.5 text-green-500 flex items-center">
-                                    <Icon name="apple" size={16} />
-                                </div>
-                                おすすめの食材
-                            </h5>
-                            <div className="flex flex-wrap gap-2">
-                                {nutrient.recommendedFoods.map((food, idx) => (
-                                    <span key={idx} className="bg-white border border-gray-200 text-gray-700 text-xs px-2.5 py-1 rounded-md shadow-sm">
-                                        {food}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
+                  </div>
+                  <button 
+                    onClick={() => handleDelete(meal.id)}
+                    className="absolute top-4 right-4 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                    title="削除"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
-            );
-        }
+              ))}
+            </div>
+          )}
+        </div>
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+      </div>
+    </div>
+  );
+}
