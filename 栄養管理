@@ -1,192 +1,268 @@
-import React, { useState, useEffect } from 'react';
-import { PlusCircle, Apple, Coffee, Utensils, Moon, Trash2, Activity } from 'lucide-react';
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BiteLog - 毎日の食事トラッカー</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React & ReactDOM CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  
+  <!-- Babel CDN (JSXのブラウザコンパイル用) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
 
-export default function App() {
-  // 食事の記録を保存するステート
-  const [meals, setMeals] = useState(() => {
-    // 実際のアプリではここでlocalStorageやデータベースから読み込みます
-    return [
-      { id: 1, type: '朝食', description: 'トーストとコーヒー、ゆで卵', healthScore: 4, time: '07:30' },
-      { id: 2, type: '昼食', description: 'ラーメン、チャーハンセット', healthScore: 2, time: '12:30' }
-    ];
-  });
+  <div id="root"></div>
 
-  // 入力フォーム用のステート
-  const [mealType, setMealType] = useState('朝食');
-  const [description, setDescription] = useState('');
-  const [healthScore, setHealthScore] = useState(3);
+  <!-- Reactコンポーネントの定義 -->
+  <script type="text/babel">
+    const { useState, useEffect } = React;
 
-  // 平均健康スコアの計算
-  const averageScore = meals.length > 0 
-    ? (meals.reduce((sum, meal) => sum + meal.healthScore, 0) / meals.length).toFixed(1)
-    : 0;
+    function App() {
+      // 初期状態：localStorageから読み込む。無ければ初期データを表示。
+      const [meals, setMeals] = useState(() => {
+        const savedMeals = localStorage.getItem('bitelog_meals');
+        if (savedMeals) {
+          try {
+            return JSON.parse(savedMeals);
+          } catch (e) {
+            console.error("データの読み込みに失敗しました", e);
+          }
+        }
+        return [
+          { id: 1, type: '朝食', description: 'トーストとコーヒー、ゆで卵', healthScore: 4, time: '07:30' },
+          { id: 2, type: '昼食', description: 'ラーメン、チャーハンセット', healthScore: 2, time: '12:30' }
+        ];
+      });
 
-  // 新しい食事を記録する処理
-  const handleAddMeal = (e) => {
-    e.preventDefault();
-    if (!description.trim()) return;
+      // 状態が変化したときにlocalStorageに保存する
+      useEffect(() => {
+        localStorage.setItem('bitelog_meals', JSON.stringify(meals));
+      }, [meals]);
 
-    const now = new Date();
-    const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+      const [mealType, setMealType] = useState('朝食');
+      const [description, setDescription] = useState('');
+      const [healthScore, setHealthScore] = useState(3);
 
-    const newMeal = {
-      id: Date.now(),
-      type: mealType,
-      description,
-      healthScore,
-      time: timeString
-    };
+      // 平均スコアの計算
+      const averageScore = meals.length > 0 
+        ? (meals.reduce((sum, meal) => sum + meal.healthScore, 0) / meals.length).toFixed(1)
+        : 0;
 
-    setMeals([...meals, newMeal]);
-    setDescription('');
-    setHealthScore(3); // デフォルトに戻す
-  };
+      // 食事の追加
+      const handleAddMeal = (e) => {
+        e.preventDefault();
+        if (!description.trim()) return;
 
-  // 記録を削除する処理
-  const handleDelete = (id) => {
-    setMeals(meals.filter(meal => meal.id !== id));
-  };
+        const now = new Date();
+        const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
-  // 食事タイプに応じたアイコンを返す関数
-  const getIcon = (type) => {
-    switch(type) {
-      case '朝食': return <Coffee className="w-5 h-5 text-amber-500" />;
-      case '昼食': return <Utensils className="w-5 h-5 text-orange-500" />;
-      case '夕食': return <Moon className="w-5 h-5 text-indigo-500" />;
-      case '間食': return <Apple className="w-5 h-5 text-red-500" />;
-      default: return <Utensils className="w-5 h-5 text-gray-500" />;
-    }
-  };
+        const newMeal = {
+          id: Date.now(),
+          type: mealType,
+          description,
+          healthScore,
+          time: timeString
+        };
 
-  return (
-    <div className="min-h-screen bg-gray-50 text-gray-800 font-sans p-4 md:p-8">
-      <div className="max-w-md mx-auto space-y-6">
-        
-        {/* ヘッダー */}
-        <header className="text-center pb-4 border-b border-gray-200">
-          <h1 className="text-2xl font-bold text-emerald-600 flex items-center justify-center gap-2">
-            <Apple className="w-6 h-6" />
-            BiteLog
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">毎日の食習慣を振り返ろう</p>
-        </header>
+        setMeals([...meals, newMeal]);
+        setDescription('');
+        setHealthScore(3);
+      };
 
-        {/* ダッシュボード */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-medium text-gray-500 mb-1">今日の健康スコア</h2>
-            <div className="text-3xl font-bold text-gray-800">
-              {averageScore} <span className="text-lg font-normal text-gray-400">/ 5.0</span>
-            </div>
-          </div>
-          <div className={`p-4 rounded-full ${averageScore >= 4 ? 'bg-emerald-100 text-emerald-600' : averageScore >= 3 ? 'bg-yellow-100 text-yellow-600' : 'bg-red-100 text-red-600'}`}>
-            <Activity className="w-8 h-8" />
-          </div>
-        </div>
+      // 食事の削除
+      const handleDelete = (id) => {
+        setMeals(meals.filter(meal => meal.id !== id));
+      };
 
-        {/* 入力フォーム */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="font-semibold text-gray-800 mb-4">食事を記録する</h3>
-          <form onSubmit={handleAddMeal} className="space-y-4">
+      return (
+        <div className="min-h-screen p-4 md:p-8">
+          <div className="max-w-md mx-auto space-y-6">
             
-            <div className="grid grid-cols-4 gap-2">
-              {['朝食', '昼食', '夕食', '間食'].map(type => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setMealType(type)}
-                  className={`py-2 text-sm font-medium rounded-lg transition-colors ${
-                    mealType === type 
-                      ? 'bg-emerald-600 text-white shadow-md' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
+            {/* ヘッダー */}
+            <header className="text-center pb-4 border-b border-gray-200">
+              <h1 className="text-2xl font-bold text-emerald-600 flex items-center justify-center gap-2">
+                <i data-lucide="apple" className="w-6 h-6"></i>
+                BiteLog
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">毎日の食習慣を振り返ろう</p>
+            </header>
 
-            <div>
-              <input
-                type="text"
-                placeholder="何を食べましたか？（例：サラダとチキン）"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-shadow"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-2">
-                健康度合いの自己評価（1: 悪い 〜 5: 良い）
-              </label>
-              <input
-                type="range"
-                min="1"
-                max="5"
-                value={healthScore}
-                onChange={(e) => setHealthScore(parseInt(e.target.value))}
-                className="w-full accent-emerald-500"
-              />
-              <div className="flex justify-between text-xs text-gray-400 mt-1 px-1">
-                <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+            {/* ダッシュボード */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-medium text-gray-500 mb-1">今日の健康スコア</h2>
+                <div className="text-3xl font-bold text-gray-800">
+                  {averageScore} <span className="text-lg font-normal text-gray-400">/ 5.0</span>
+                </div>
+              </div>
+              <div className={`p-4 rounded-full ${
+                averageScore >= 4 ? 'bg-emerald-100 text-emerald-600' : 
+                averageScore >= 3 ? 'bg-yellow-100 text-yellow-600' : 
+                'bg-red-100 text-red-600'
+              }`}>
+                <i data-lucide="activity" className="w-8 h-8"></i>
               </div>
             </div>
 
-            <button
-              type="submit"
-              className="w-full bg-gray-800 hover:bg-gray-900 text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
-            >
-              <PlusCircle className="w-5 h-5" />
-              記録する
-            </button>
-          </form>
-        </div>
-
-        {/* タイムライン（記録一覧） */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="font-semibold text-gray-800 mb-4">今日の記録</h3>
-          
-          {meals.length === 0 ? (
-            <p className="text-center text-gray-400 py-6">まだ記録がありません</p>
-          ) : (
-            <div className="space-y-4">
-              {meals.slice().reverse().map(meal => (
-                <div key={meal.id} className="flex items-start gap-4 p-4 rounded-xl bg-gray-50 border border-gray-100 relative group">
-                  <div className="bg-white p-2 rounded-full shadow-sm">
-                    {getIcon(meal.type)}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs font-bold text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
-                        {meal.type}
-                      </span>
-                      <span className="text-xs text-gray-400">{meal.time}</span>
-                    </div>
-                    <p className="text-gray-800 mb-2">{meal.description}</p>
-                    <div className="flex items-center gap-1">
-                      {[1, 2, 3, 4, 5].map(star => (
-                        <span key={star} className={`text-sm ${star <= meal.healthScore ? 'text-yellow-400' : 'text-gray-200'}`}>
-                          ★
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => handleDelete(meal.id)}
-                    className="absolute top-4 right-4 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                    title="削除"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+            {/* 入力フォーム */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <h3 className="font-semibold text-gray-800 mb-4">食事を記録する</h3>
+              <form onSubmit={handleAddMeal} className="space-y-4">
+                
+                <div className="grid grid-cols-4 gap-2">
+                  {['朝食', '昼食', '夕食', '間食'].map(type => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setMealType(type)}
+                      className={`py-2 text-sm font-medium rounded-lg transition-colors ${
+                        mealType === type 
+                          ? 'bg-emerald-600 text-white shadow-md' 
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
 
-      </div>
-    </div>
-  );
-}
+                <div>
+                  <input
+                    type="text"
+                    placeholder="何を食べましたか？（例：サラダとチキン）"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-shadow text-base"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-2">
+                    健康度合いの自己評価（1: 悪い 〜 5: 良い）
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    value={healthScore}
+                    onChange={(e) => setHealthScore(parseInt(e.target.value))}
+                    className="w-full accent-emerald-500 cursor-pointer"
+                  />
+                  <div className="flex justify-between text-xs text-gray-400 mt-1 px-1">
+                    <span>悪い 😟</span>
+                    <span>普通 😐</span>
+                    <span>良い 😄</span>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-md"
+                >
+                  <i data-lucide="plus-circle" className="w-5 h-5"></i>
+                  記録する
+                </button>
+              </form>
+            </div>
+
+            {/* タイムライン（記録一覧） */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <h3 className="font-semibold text-gray-800 mb-4">今日の記録</h3>
+              
+              {meals.length === 0 ? (
+                <div className="text-center py-8">
+                  <i data-lucide="utensils" className="w-12 h-12 mx-auto text-gray-300 mb-2"></i>
+                  <p className="text-gray-400">まだ記録がありません。上のフォームから記録しましょう！</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {meals.slice().reverse().map(meal => (
+                    <div key={meal.id} className="flex items-start gap-4 p-4 rounded-xl bg-gray-50 border border-gray-100 relative group transition-all hover:shadow-sm">
+                      <div className="bg-white p-2 rounded-full shadow-xs border border-gray-100">
+                        {meal.type === '朝食' && <i data-lucide="coffee" className="w-5 h-5 text-amber-500"></i>}
+                        {meal.type === '昼食' && <i data-lucide="utensils" className="w-5 h-5 text-orange-500"></i>}
+                        {meal.type === '夕食' && <i data-lucide="moon" className="w-5 h-5 text-indigo-500"></i>}
+                        {meal.type === '間食' && <i data-lucide="apple" className="w-5 h-5 text-red-500"></i>}
+                      </div>
+                      <div className="flex-1 pr-6">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs font-bold text-gray-500 bg-gray-200/60 px-2 py-0.5 rounded-full">
+                            {meal.type}
+                          </span>
+                          <span className="text-xs text-gray-400">{meal.time}</span>
+                        </div>
+                        <p className="text-gray-800 font-medium mb-2">{meal.description}</p>
+                        <div className="flex items-center gap-1 text-sm text-yellow-400">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <span key={i} className={i < meal.healthScore ? "opacity-100" : "opacity-20 text-gray-400"}>★</span>
+                          ))}
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => handleDelete(meal.id)}
+                        className="absolute top-4 right-4 text-gray-300 hover:text-red-500 transition-colors md:opacity-0 md:group-hover:opacity-100"
+                        title="削除"
+                      >
+                        <i data-lucide="trash-2" className="w-4 h-4"></i>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* GitHub Pages 公開用のクイックガイド */}
+            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 text-sm text-emerald-800 space-y-2">
+              <h4 className="font-bold flex items-center gap-1.5 text-emerald-900">
+                <i data-lucide="github" className="w-4 h-4"></i>
+                GitHub Pagesで公開する方法
+              </h4>
+              <ol className="list-decimal list-inside space-y-1 text-emerald-700">
+                <li>右側の「index.html」コードをコピーしてパソコンに保存します。</li>
+                <li>GitHubで新しいリポジトリ（例: <code className="bg-emerald-100 px-1 rounded font-mono">bitelog</code>）を作成します。</li>
+                <li>リポジトリに <code className="bg-emerald-100 px-1 rounded font-mono">index.html</code> をアップロード（またはプッシュ）します。</li>
+                <li>リポジトリの <strong>Settings &gt; Pages</strong> を開きます。</li>
+                <li>Build and deployment の Source を <strong>Deploy from a branch</strong> にし、Branch を <code className="bg-emerald-100 px-1 rounded font-mono">main</code>（またはmaster）の <code className="bg-emerald-100 px-1 rounded font-mono">/ (root)</code> に設定して <strong>Save</strong> します。</li>
+              </ol>
+              <p className="text-xs text-emerald-600 pt-1 border-t border-emerald-100">
+                ※これだけで、数分後に自分だけの食事トラッカーアプリがWeb上に公開され、スマホのブラウザでも動かせるようになります！
+              </p>
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    // LucideアイコンとReactを正しく初期化・バインドするための処理
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+
+    // アイコンの適用（Reactレンダリング後にLucideを走らせる）
+    setTimeout(() => {
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+    }, 100);
+
+    // React内の再レンダリングやリスト追加に合わせてアイコンを適用するヘルパー
+    const observer = new MutationObserver(() => {
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+    });
+    observer.observe(document.getElementById('root'), { childList: true, subtree: true });
+  </script>
+
+</body>
+</html>
